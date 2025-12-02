@@ -1,19 +1,21 @@
-package tabular;
-
 public class DataRow {
-    private double y;
-    private double[] x;
+    private double[] values;
+    private double target;
 
-    public DataRow(double y, double[] x) {
-        this.y = y;
-        this.x = x;
+    public DataRow(double[] values, double target) {
+        this.values = values;
+        this.target = target;
     }
 
-    public double getY() {
-        return y;
+    public double getValue(int i) {
+        return values[i];
     }
 
-    public double[] getX() {
-        return x;
+    public double getTarget() {
+        return target;
+    }
+
+    public int size() {
+        return values.length;
     }
 }
