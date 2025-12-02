@@ -1,57 +1,68 @@
-import java.util.ArrayList;
-import java.util.Random;
+import java.util.*;
 
-public class GPTree implements Collector {
+public class GPTree implements Comparable<GPTree>, Collector {
+
     private Node root;
     private ArrayList<Node> crossNodes;
+    private double fitness;
 
-    public GPTree() { root = null; }
+    public GPTree() {}
 
-    public GPTree(NodeFactory n, int maxDepth, Random rand) {
-        root = n.getOperator(rand);
-        root.addRandomKids(n, maxDepth, rand);
+    public GPTree(NodeFactory nf, int maxDepth, Random rand) {
+        root = nf.getOperator(rand);
+        root.addRandomKids(nf, maxDepth, rand);
     }
 
-    /** Step 3: collect non-leaf nodes for crossover */
-    @Override
-    public void collect(Node node) {
-        if(!node.isLeaf()) {
-            if(crossNodes == null) crossNodes = new ArrayList<>();
-            crossNodes.add(node);
+    public double getFitness() {
+        return fitness;
+    }
+
+    public void evalFitness(DataSet data) {
+        fitness = 0;
+
+        for (DataRow row : data.rows) {
+            double predicted = root.eval(row.x);
+            double error = predicted - row.y;
+            fitness += error * error;  // squared error
         }
     }
 
-    /** prepare list of cross nodes by traversing tree */
+    @Override
+    public int compareTo(GPTree o) {
+        return Double.compare(this.fitness, o.fitness);
+    }
+
+    // Required for crossover
+    @Override
+    public void collect(Node n) {
+        if (!n.isLeaf()) {
+            if (crossNodes == null) crossNodes = new ArrayList<>();
+            crossNodes.add(n);
+        }
+    }
+
     public void traverse() {
         crossNodes = new ArrayList<>();
         root.traverse(this);
     }
 
-    public String getCrossNodes() {
-        StringBuilder string = new StringBuilder();
-        int lastIndex = crossNodes.size() - 1;
-        for(int i = 0; i < lastIndex; ++i) {
-            Node node = crossNodes.get(i);
-            string.append(node.toString()).append(";");
-        }
-        if(lastIndex >= 0) string.append(crossNodes.get(lastIndex));
-        return string.toString();
+    @Override
+    public String toString() {
+        return root.toString();
     }
 
-    public void crossover(GPTree tree, Random rand) {
-        this.traverse();
-        tree.traverse();
-        int thisPoint = rand.nextInt(this.crossNodes.size());
-        int treePoint = rand.nextInt(tree.crossNodes.size());
-        boolean left = rand.nextBoolean();
-
-        Node thisTrunk = crossNodes.get(thisPoint);
-        Node treeTrunk = tree.crossNodes.get(treePoint);
-
-        if(left) thisTrunk.swapLeft(treeTrunk);
-        else thisTrunk.swapRight(treeTrunk);
+    @Override
+    public GPTree clone() {
+        GPTree g = new GPTree();
+        g.root = (Node) this.root.clone();
+        g.fitness = this.fitness;
+        return g;
     }
 
-    public String toString() { return root.toString(); }
-    public double eval(double[] data) { return root.eval(data); }
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof GPTree)) return false;
+        GPTree t = (GPTree) o;
+        return this.toString().equals(t.toString());
+    }
 }
