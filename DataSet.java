@@ -1,39 +1,36 @@
-package tabular;
-
-import java.io.*;
-import java.util.*;
+import java.util.ArrayList;
 
 public class DataSet {
 
     private ArrayList<DataRow> rows;
-    private int numIndepVars;
 
     public DataSet(String fileName) {
         rows = new ArrayList<>();
+        loadCSV(fileName);
+    }
 
+    private void loadCSV(String fileName) {
         try {
-            BufferedReader br = new BufferedReader(new FileReader(fileName));
-            String header = br.readLine();  // skip first line
+            java.io.BufferedReader br = new java.io.BufferedReader(new java.io.FileReader(fileName));
 
             String line;
             while ((line = br.readLine()) != null) {
                 String[] parts = line.split(",");
 
-                double y = Double.parseDouble(parts[0]);
+                double[] inputs = new double[parts.length - 1];
 
-                double[] xvals = new double[parts.length - 1];
-                for (int i = 1; i < parts.length; i++) {
-                    xvals[i - 1] = Double.parseDouble(parts[i]);
+                for (int i = 0; i < parts.length - 1; i++) {
+                    inputs[i] = Double.parseDouble(parts[i]);
                 }
 
-                rows.add(new DataRow(y, xvals));
-                numIndepVars = xvals.length;
+                double target = Double.parseDouble(parts[parts.length - 1]);
+
+                rows.add(new DataRow(inputs, target));
             }
 
             br.close();
-
         } catch (Exception e) {
-            System.out.println("ERROR loading dataset: " + e);
+            System.out.println("Error loading CSV: " + e);
         }
     }
 
@@ -45,7 +42,7 @@ public class DataSet {
         return rows.get(i);
     }
 
-    public int getNumIndepVars() {
-        return numIndepVars;
+    public ArrayList<DataRow> getRows() {
+        return rows;
     }
 }
