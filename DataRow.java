@@ -1,21 +1,9 @@
 public class DataRow {
-    private double[] values;
-    private double target;
+    public double[] x; // independent variables
+    public double y;   // dependent variable
 
-    public DataRow(double[] values, double target) {
-        this.values = values;
-        this.target = target;
-    }
-
-    public double getValue(int i) {
-        return values[i];
-    }
-
-    public double getTarget() {
-        return target;
-    }
-
-    public int size() {
-        return values.length;
+    public DataRow(double y, double[] x) {
+        this.y = y;
+        this.x = x;
     }
 }
