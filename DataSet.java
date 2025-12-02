@@ -1,48 +1,34 @@
-import java.util.ArrayList;
+import java.io.*;
+import java.util.*;
 
 public class DataSet {
-
     private ArrayList<DataRow> rows;
+    public int numIndepVars;
 
-    public DataSet(String fileName) {
+    public DataSet(String fileName) throws IOException {
         rows = new ArrayList<>();
-        loadCSV(fileName);
-    }
-
-    private void loadCSV(String fileName) {
-        try {
-            java.io.BufferedReader br = new java.io.BufferedReader(new java.io.FileReader(fileName));
-
-            String line;
-            while ((line = br.readLine()) != null) {
-                String[] parts = line.split(",");
-
-                double[] inputs = new double[parts.length - 1];
-
-                for (int i = 0; i < parts.length - 1; i++) {
-                    inputs[i] = Double.parseDouble(parts[i]);
+        BufferedReader br = new BufferedReader(new FileReader(fileName));
+        String line = br.readLine(); // skip header
+        line = br.readLine();
+        if(line != null) {
+            String[] parts = line.split(",");
+            numIndepVars = parts.length - 1; // first column = y, rest = x
+            do {
+                double y = Double.parseDouble(parts[0].trim());
+                double[] x = new double[numIndepVars];
+                for(int i=0; i<numIndepVars; i++) {
+                    x[i] = Double.parseDouble(parts[i+1].trim());
                 }
-
-                double target = Double.parseDouble(parts[parts.length - 1]);
-
-                rows.add(new DataRow(inputs, target));
-            }
-
-            br.close();
-        } catch (Exception e) {
-            System.out.println("Error loading CSV: " + e);
+                rows.add(new DataRow(y, x));
+                line = br.readLine();
+                if(line != null) parts = line.split(",");
+            } while(line != null);
         }
-    }
-
-    public int size() {
-        return rows.size();
-    }
-
-    public DataRow getRow(int i) {
-        return rows.get(i);
+        br.close();
     }
 
     public ArrayList<DataRow> getRows() {
         return rows;
     }
 }
+
