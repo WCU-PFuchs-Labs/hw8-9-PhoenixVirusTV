@@ -1,5 +1,6 @@
 import java.util.ArrayList;
 import java.util.Random;
+private double fitness;
 
 public class GPTree implements Collector {
     private Node root;
@@ -54,4 +55,46 @@ public class GPTree implements Collector {
 
     public String toString() { return root.toString(); }
     public double eval(double[] data) { return root.eval(data); }
+}
+// Compute fitness over dataset
+public void evalFitness(DataSet data) {
+    double sumSq = 0;
+
+    for (int i = 0; i < data.size(); i++) {
+        DataRow r = data.getRow(i);
+        double y = r.getY();
+        double[] x = r.getXValues();
+
+        double pred = eval(x);
+        double diff = pred - y;
+        sumSq += diff * diff;
+    }
+
+    fitness = sumSq;
+}
+
+public double getFitness() {
+    return fitness;
+}
+
+@Override
+public int compareTo(GPTree t) {
+    return Double.compare(this.fitness, t.fitness);
+}
+
+@Override
+public boolean equals(Object o) {
+    if (o == null || !(o instanceof GPTree)) return false;
+    return compareTo((GPTree)o) == 0;
+}
+
+@Override
+public GPTree clone() {
+    try {
+        GPTree c = (GPTree) super.clone();
+        c.root = (Node) this.root.clone();
+        return c;
+    } catch (Exception e) {
+        return null;
+    }
 }
