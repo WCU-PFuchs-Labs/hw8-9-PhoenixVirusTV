@@ -1,18 +1,31 @@
-import java.util.*;
+import java.util.Random;
+
 public class NodeFactory {
-    private String[] ops;
-    private int vars;
-    public NodeFactory(String[] ops, int vars){
-        this.ops=ops; this.vars=vars;
+    private int numIndepVars;
+    private Binop[] currentOps;
+
+    public NodeFactory(Binop[] ops, int numVars) {
+        currentOps = ops;
+        numIndepVars = numVars;
     }
-    public Node randomNode(Random r, int depth){
-        if(depth==0){
-            if(r.nextBoolean()) return new ConstNode(r.nextDouble());
-            return new VarNode(r.nextInt(vars));
+
+    // Always returns a valid operator Node
+    public Node getOperator(Random rand) {
+        Binop op = (Binop) currentOps[rand.nextInt(currentOps.length)].clone();
+        return new Node(op);
+    }
+
+    // Always returns a valid terminal Node
+    public Node getTerminal(Random rand) {
+        if(rand.nextBoolean()) {
+            double val = Math.round(rand.nextDouble() * 100.0) / 100.0;
+            return new Node(new Const(val));
+        } else {
+            int idx = rand.nextInt(numIndepVars);
+            return new Node(new Variable(idx));
         }
-        String op=ops[r.nextInt(ops.length)];
-        Node l=randomNode(r,depth-1);
-        Node rr=randomNode(r,depth-1);
-        return new BinOpNode(op,l,rr);
     }
+
+    public int getNumOps() { return currentOps.length; }
+    public int getNumIndepVars() { return numIndepVars; }
 }
