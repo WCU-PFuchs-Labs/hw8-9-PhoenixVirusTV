@@ -1,1 +1,0 @@
-Skeleton GP project — fill in full implementations.
