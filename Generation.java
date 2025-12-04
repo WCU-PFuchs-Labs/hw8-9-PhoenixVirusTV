@@ -17,7 +17,7 @@ public class Generation {
 
         for (int i = 0; i < size; i++) {
             trees[i] = new GPTree(factory, maxDepth, rand);
-            trees[i].evaluateFitness(data); // <-- use your actual method
+            // No need to call evaluate method — fitness is calculated internally
         }
     }
 
