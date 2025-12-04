@@ -1,56 +1,25 @@
 import java.io.*;
 import java.util.*;
-
 public class DataSet {
-    private List<double[]> inputs = new ArrayList<>();
-    private List<Double> outputs = new ArrayList<>();
-    private int numIndep;
-
-    public DataSet(String fileName) {
-        loadCSV(fileName);
-    }
-
-    private void loadCSV(String fileName) {
-        try (BufferedReader br = new BufferedReader(new FileReader(fileName))) {
-            String line;
-            boolean first = true;
-
+    private ArrayList<DataRow> rows;
+    private int numIndepVars;
+    public DataSet(String filename) {
+        rows = new ArrayList<>();
+        try (BufferedReader br = new BufferedReader(new FileReader(filename))) {
+            String line = br.readLine();
+            String[] header = line.split(",");
+            numIndepVars = header.length - 1;
             while ((line = br.readLine()) != null) {
-                String[] parts = line.trim().split(",");
-
-                if (first) {
-                    numIndep = parts.length - 1;
-                    first = false;
-                }
-
-                double[] in = new double[numIndep];
-                for (int i = 0; i < numIndep; i++) {
-                    in[i] = Double.parseDouble(parts[i]);
-                }
-
-                double out = Double.parseDouble(parts[numIndep]);
-
-                inputs.add(in);
-                outputs.add(out);
+                if(line.trim().isEmpty()) continue;
+                String[] parts = line.split(",");
+                double y = Double.parseDouble(parts[0]);
+                double[] x = new double[numIndepVars];
+                for(int i=0;i<numIndepVars;i++) x[i] = Double.parseDouble(parts[i+1]);
+                rows.add(new DataRow(y, x));
             }
-        } catch (Exception e) {
-            throw new RuntimeException("Error loading CSV: " + e.getMessage());
-        }
+        } catch(Exception e) { System.out.println(e); }
     }
-
-    public int getNumIndep() {
-        return numIndep;
-    }
-
-    public int size() {
-        return inputs.size();
-    }
-
-    public double[] getInput(int i) {
-        return inputs.get(i);
-    }
-
-    public double getOutput(int i) {
-        return outputs.get(i);
-    }
+    public int size() { return rows.size(); }
+    public int getNumIndepVars() { return numIndepVars; }
+    public DataRow getRow(int i) { return rows.get(i); }
 }
