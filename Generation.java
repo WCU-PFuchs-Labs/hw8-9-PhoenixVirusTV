@@ -21,19 +21,15 @@ public class Generation {
         }
     }
 
-    // Evaluate all trees and sort by fitness
     public void evalAll() {
         for (GPTree t : trees) t.evalFitness(data);
         Arrays.sort(trees);
     }
 
-    // Return top 10 trees
     public ArrayList<GPTree> getTopTen() {
         ArrayList<GPTree> topTen = new ArrayList<>();
         int n = Math.min(10, trees.length);
-        for (int i = 0; i < n; i++) {
-            topTen.add(trees[i].copy());
-        }
+        for (int i = 0; i < n; i++) topTen.add(trees[i].copy());
         return topTen;
     }
 
@@ -43,5 +39,16 @@ public class Generation {
 
     public void printBestTree() {
         if (trees.length > 0) System.out.println(trees[0]);
+    }
+
+    // --- Methods the tests expect ---
+    public GPTree getBestTree() {
+        if (trees.length > 0) return trees[0].copy();
+        return null;
+    }
+
+    public double getBestFitness() {
+        if (trees.length > 0) return trees[0].getFitness();
+        return Double.POSITIVE_INFINITY;
     }
 }
