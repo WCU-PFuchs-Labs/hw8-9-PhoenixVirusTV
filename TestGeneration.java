@@ -2,24 +2,22 @@ import java.util.*;
 
 public class TestGeneration {
     public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
+        Scanner in = new Scanner(System.in);
         System.out.print("Enter data file name: ");
-        String fileName = scanner.nextLine();
+        String file = in.nextLine();
 
-        // Create a generation
-        Generation generation = new Generation(500, 6, fileName);
+        Generation gen = new Generation(500, 6, file);
+        gen.evalAll();
 
-        // Get the best tree
-        GPTree bestTree = generation.getBestTree();
-        System.out.println("Best Tree: " + bestTree);
-        System.out.printf("Best Fitness: %.2f%n", bestTree.getFitness());
+        gen.printBestTree();
+        gen.printBestFitness();
 
-        // Get top ten fitness values
-        double[] topTen = generation.getTopTenFitness();
+        ArrayList<GPTree> top10 = gen.getTopTen();
         System.out.print("Top Ten Fitness Values:\n");
-        for (int i = 0; i < topTen.length; i++) {
-            System.out.printf("%.2f", topTen[i]);
-            if (i < topTen.length - 1) System.out.print(", ");
+
+        for (int i = 0; i < top10.size(); i++) {
+            System.out.printf("%.2f", top10.get(i).getFitness());
+            if (i < top10.size() - 1) System.out.print(", ");
         }
         System.out.println();
     }

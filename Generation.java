@@ -9,38 +9,55 @@ public class Generation {
     public Generation(int size, int maxDepth, String fileName) {
         data = new DataSet(fileName);
 
+        // Factory uses correct number of independent variables
         Binop[] ops = { new Plus(), new Minus(), new Mult(), new Divide() };
-        factory = new NodeFactory(ops, data.getNumIndep()); // Must exist in DataSet
+        factory = new NodeFactory(ops, data.getNumIndepVars());
 
         rand = new Random();
         trees = new GPTree[size];
 
-        // Build all trees and compute fitness
         for (int i = 0; i < size; i++) {
             trees[i] = new GPTree(factory, maxDepth, rand);
-            trees[i].evaluateFitness(data);   // <-- IMPORTANT: correct method call
         }
     }
 
-    // Return best tree (lowest fitness)
-    public GPTree getBestTree() {
-        GPTree best = trees[0];
+    public void evalAll() {
         for (GPTree t : trees) {
-            if (t.getFitness() < best.getFitness()) {
-                best = t;
-            }
+            t.evalFitness(data);
         }
-        return best;
+        Arrays.sort(trees);
     }
 
-    // Return array of top ten fitness values (sorted)
-    public double[] getTopTenFitness() {
-        double[] fitness = new double[trees.length];
-        for (int i = 0; i < trees.length; i++) {
-            fitness[i] = trees[i].getFitness();
+    public ArrayList<GPTree> getTopTen() {
+        ArrayList<GPTree> top = new ArrayList<>();
+        for (int i = 0; i < 10 && i < trees.length; i++) {
+            top.add(trees[i]);
+        }
+        return top;
+    }
+
+    public void printBestFitness() {
+        System.out.println("Best Fitness: " + trees[0].getFitness());
+    }
+
+    public void printBestTree() {
+        System.out.println("Best Tree: " + trees[0]);
+    }
+
+    // GP evolution (Checkpoint 2)
+    public void evolve() {
+        GPTree[] next = new GPTree[trees.length];
+
+        for (int i = 0; i < trees.length; i += 2) {
+            GPTree p1 = trees[rand.nextInt(trees.length / 2)].clone();
+            GPTree p2 = trees[rand.nextInt(trees.length / 2)].clone();
+
+            p1.crossover(p2, rand);
+
+            next[i] = p1;
+            if (i + 1 < trees.length) next[i + 1] = p2;
         }
 
-        Arrays.sort(fitness);
-        return Arrays.copyOf(fitness, Math.min(10, fitness.length));
+        trees = next;
     }
 }
