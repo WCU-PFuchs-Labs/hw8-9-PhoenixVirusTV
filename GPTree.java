@@ -4,24 +4,10 @@ import java.util.Random;
 /**
  * GPTree - genetic programming tree used for symbolic regression.
  *
- * This implementation matches the Node, NodeFactory, and Collector
- * classes in your project:
- *  - constructor: GPTree(NodeFactory n, int maxDepth, Random rand)
- *  - crossover(GPTree other, Random rand)
- *  - eval(double[] data)
- *  - evalFitness(DataSet data)
- *  - getFitness()
- *  - clone(), compareTo(), equals()
- *
- * It assumes:
- *  - Node has methods: eval(double[]), addRandomKids(NodeFactory,int,Random),
- *    clone(), traverse(Collector), swapLeft(Node), swapRight(Node), isLeaf(), toString()
- *  - NodeFactory has methods: getOperator(Random), getTerminal(Random),
- *    getNumOps(), getNumIndepVars()
- *  - DataSet has methods: size(), getRow(int)
- *  - DataRow has methods: getY(), getXValues()
+ * Notes:
+ *  - Uses Node, NodeFactory, DataSet, DataRow as in your project.
+ *  - Constructor: GPTree(NodeFactory, int maxDepth, Random rand)
  */
-
 public class GPTree implements Comparable<GPTree>, Collector, Cloneable {
     private Node root;
     private ArrayList<Node> crossNodes;
@@ -30,15 +16,15 @@ public class GPTree implements Comparable<GPTree>, Collector, Cloneable {
     // Default empty constructor
     public GPTree() {
         root = null;
-        crossNodes = null;
+        crossNodes = new ArrayList<>();
         fitness = Double.POSITIVE_INFINITY;
     }
 
     // Constructor matching other code/tests: build a random tree
     public GPTree(NodeFactory n, int maxDepth, Random rand) {
         root = n.getOperator(rand);
-        root.addRandomKids(n, maxDepth, rand);
-        crossNodes = null;
+        if (root != null) root.addRandomKids(n, maxDepth, rand);
+        crossNodes = new ArrayList<>();
         fitness = Double.POSITIVE_INFINITY;
     }
 
@@ -50,6 +36,7 @@ public class GPTree implements Comparable<GPTree>, Collector, Cloneable {
 
     // Evaluate this tree on one row (double[] of independent variables)
     public double eval(double[] data) {
+        if (root == null) return 0.0;
         return root.eval(data);
     }
 
@@ -57,6 +44,7 @@ public class GPTree implements Comparable<GPTree>, Collector, Cloneable {
     // collect non-leaf nodes for crossover
     @Override
     public void collect(Node node) {
+        if (node == null) return;
         if (!node.isLeaf()) {
             if (crossNodes == null) crossNodes = new ArrayList<>();
             crossNodes.add(node);
@@ -82,7 +70,8 @@ public class GPTree implements Comparable<GPTree>, Collector, Cloneable {
     }
 
     // ---------------- Crossover ----------------
-    // Swap a left or right child with another tree's chosen non-leaf node
+    // Swap a left or right child with another tree's chosen non-leaf node.
+    // Uses a cloned subtree from the other tree to avoid shared-node aliasing.
     public void crossover(GPTree tree, Random rand) {
         if (this.root == null || tree == null || tree.root == null) return;
 
@@ -100,8 +89,20 @@ public class GPTree implements Comparable<GPTree>, Collector, Cloneable {
         Node thisTrunk = this.crossNodes.get(thisPoint);
         Node treeTrunk = tree.crossNodes.get(treePoint);
 
-        if (left) thisTrunk.swapLeft(treeTrunk);
-        else thisTrunk.swapRight(treeTrunk);
+        // Clone the other subtree so we don't create shared references
+        Node replacement;
+        try {
+            replacement = (Node) treeTrunk.clone(); // Node.clone implemented in your Node.java
+        } catch (Exception e) {
+            // If cloning fails, abort crossover safely
+            return;
+        }
+
+        // Use swapLeft/swapRight which exchange child pointers between nodes.
+        // By passing a clone-holder (replacement), this copies the other subtree
+        // into thisTrunk while avoiding aliasing of nodes between trees.
+        if (left) thisTrunk.swapLeft(replacement);
+        else thisTrunk.swapRight(replacement);
     }
 
     // ---------------- Fitness computation ----------------
@@ -124,6 +125,11 @@ public class GPTree implements Comparable<GPTree>, Collector, Cloneable {
         return this.fitness;
     }
 
+    // Setter in case other code expects it
+    public void setFitness(double f) {
+        this.fitness = f;
+    }
+
     // ---------------- Comparable and equals ----------------
     @Override
     public int compareTo(GPTree t) {
@@ -133,7 +139,8 @@ public class GPTree implements Comparable<GPTree>, Collector, Cloneable {
     @Override
     public boolean equals(Object o) {
         if (o == null || !(o instanceof GPTree)) return false;
-        return this.compareTo((GPTree) o) == 0;
+        // define equality by exact tree string match (structure)
+        return this.toString().equals(((GPTree)o).toString());
     }
 
     // ---------------- Clone ----------------
@@ -142,11 +149,11 @@ public class GPTree implements Comparable<GPTree>, Collector, Cloneable {
         try {
             GPTree c = (GPTree) super.clone();
             if (this.root != null) c.root = (Node) this.root.clone();
-            if (this.crossNodes != null) c.crossNodes = new ArrayList<>(this.crossNodes);
+            // do NOT shallow-copy crossNodes; force recalculation when needed
+            c.crossNodes = new ArrayList<>();
             c.fitness = this.fitness;
             return c;
         } catch (CloneNotSupportedException e) {
-            // Shouldn't happen because we implement Cloneable
             return null;
         }
     }
