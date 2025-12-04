@@ -1,17 +1,30 @@
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Random;
 
+/**
+ * Generation - manages a population of GPTrees and provides the methods
+ * expected by the autograder/test harness:
+ *  - Generation(int size, int maxDepth, String fileName)
+ *  - void evalAll()
+ *  - void printBestTree()
+ *  - void printBestFitness()
+ *  - ArrayList<GPTree> getTopTen()
+ *
+ * It uses your NodeFactory(NodeFactory(Binop[], int)) and DataSet.
+ */
 public class Generation {
 
     private int size;
     private int maxDepth;
     private String fileName;
+    private DataSet data;
+    private NodeFactory factory;
+    private Random rand;
 
     private GPTree bestTree;
     private double bestFitness;
     private ArrayList<GPTree> topTen;
-    private NodeFactory factory;
-    private Random rand;
 
     // Constructor expected by TestGeneration
     public Generation(int size, int maxDepth, String fileName) {
@@ -19,33 +32,49 @@ public class Generation {
         this.maxDepth = maxDepth;
         this.fileName = fileName;
         this.rand = new Random();
-        this.factory = new NodeFactory(); // initialize according to your NodeFactory
+        this.data = new DataSet(fileName);
+
+        // Build operator set (ensure Plus exists in your project)
+        Binop[] ops = { new Plus(), new Minus(), new Mult(), new Divide() };
+        this.factory = new NodeFactory(ops, data.getNumIndepVars());
+
         this.topTen = new ArrayList<>();
+        this.bestTree = null;
+        this.bestFitness = Double.POSITIVE_INFINITY;
     }
 
-    // Evaluate all trees (mock implementation)
+    // Create population, evaluate all, and fill topTen
     public void evalAll() {
-        topTen.clear();
+        ArrayList<GPTree> population = new ArrayList<>(size);
 
-        // Create 10 GPTrees
-        for (int i = 0; i < 10; i++) {
-            GPTree tree = new GPTree(factory, maxDepth, rand);
-            // Mock fitness value stored in tree (you can replace with real evaluation)
-            tree.setFitness(i * 10.0); // just example values
-            topTen.add(tree);
+        for (int i = 0; i < size; i++) {
+            GPTree t = new GPTree(factory, maxDepth, rand);
+            t.evalFitness(data);
+            population.add(t);
         }
 
-        // Pick the first tree as the best for demonstration
-        bestTree = topTen.get(0);
-        bestFitness = bestTree.getFitness();
+        // Sort smallest fitness first (we're minimizing SSE)
+        Collections.sort(population);
+
+        // Best tree is first element
+        if (!population.isEmpty()) {
+            bestTree = population.get(0);
+            bestFitness = bestTree.getFitness();
+        }
+
+        // Get top 10 (clone them so external code can modify safely)
+        topTen.clear();
+        for (int i = 0; i < Math.min(10, population.size()); i++) {
+            topTen.add(population.get(i).clone());
+        }
     }
 
-    // Print best tree
+    // Print the best tree
     public void printBestTree() {
-        System.out.println("Best Tree: " + bestTree.toString()); // ensure GPTree has toString()
+        System.out.println("Best Tree: " + (bestTree == null ? "" : bestTree.toString()));
     }
 
-    // Print best fitness
+    // Print best fitness with 2 decimal places
     public void printBestFitness() {
         System.out.printf("Best Fitness: %.2f%n", bestFitness);
     }
@@ -55,24 +84,25 @@ public class Generation {
         return topTen;
     }
 
-    // Autograder-safe print of top ten fitness values
-    public void printTopTenFitness() {
+    // Print top ten fitness values in autograder format
+    public void printTopTen() {
         System.out.print("Top Ten Fitness Values:\n");
-        for (int i = 0; i < topTen.size(); i++) {
-            System.out.printf("%.2f", topTen.get(i).getFitness());
-            if (i < topTen.size() - 1) System.out.print(", ");
+        for (int i = 0; i < 10; i++) {
+            if (i < topTen.size()) System.out.printf("%.2f", topTen.get(i).getFitness());
+            else System.out.printf("%.2f", 0.00);
+            if (i < 9) System.out.print(", ");
         }
         System.out.println();
     }
 
-    // Example main method for testing
+    // Example main for quick manual testing (not used by autograder)
     public static void main(String[] args) {
-        Generation gen = new Generation(500, 6, "simpleTest.csv");
+        String file = (args != null && args.length > 0) ? args[0] : "simpleTest.csv";
+        Generation gen = new Generation(500, 6, file);
         gen.evalAll();
-
-        System.out.println("Enter data file name: simpleTest.csv");
+        System.out.println("Enter data file name: " + file);
         gen.printBestTree();
         gen.printBestFitness();
-        gen.printTopTenFitness();
+        gen.printTopTen();
     }
 }
