@@ -1,108 +1,87 @@
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Random;
+import java.util.*;
 
-/**
- * Generation - manages a population of GPTrees and provides the methods
- * expected by the autograder/test harness:
- *  - Generation(int size, int maxDepth, String fileName)
- *  - void evalAll()
- *  - void printBestTree()
- *  - void printBestFitness()
- *  - ArrayList<GPTree> getTopTen()
- *
- * It uses your NodeFactory(NodeFactory(Binop[], int)) and DataSet.
- */
 public class Generation {
-
-    private int size;
-    private int maxDepth;
-    private String fileName;
+    private GPTree[] trees;
     private DataSet data;
     private NodeFactory factory;
     private Random rand;
-
-    private GPTree bestTree;
-    private double bestFitness;
     private ArrayList<GPTree> topTen;
 
-    // Constructor expected by TestGeneration
     public Generation(int size, int maxDepth, String fileName) {
-        this.size = size;
-        this.maxDepth = maxDepth;
-        this.fileName = fileName;
-        this.rand = new Random();
-        this.data = new DataSet(fileName);
+        data = new DataSet(fileName);
 
-        // Build operator set (ensure Plus exists in your project)
         Binop[] ops = { new Plus(), new Minus(), new Mult(), new Divide() };
-        this.factory = new NodeFactory(ops, data.getNumIndepVars());
+        factory = new NodeFactory(ops, data.getNumIndepVars());
 
-        this.topTen = new ArrayList<>();
-        this.bestTree = null;
-        this.bestFitness = Double.POSITIVE_INFINITY;
-    }
+        rand = new Random();
 
-    // Create population, evaluate all, and fill topTen
-    public void evalAll() {
-        ArrayList<GPTree> population = new ArrayList<>(size);
-
+        trees = new GPTree[size];
         for (int i = 0; i < size; i++) {
-            GPTree t = new GPTree(factory, maxDepth, rand);
-            t.evalFitness(data);
-            population.add(t);
+            trees[i] = new GPTree(factory, maxDepth);
         }
 
-        // Sort smallest fitness first (we're minimizing SSE)
-        Collections.sort(population);
+        topTen = new ArrayList<>();
+    }
 
-        // Best tree is first element
-        if (!population.isEmpty()) {
-            bestTree = population.get(0);
-            bestFitness = bestTree.getFitness();
-        }
-
-        // Get top 10 (clone them so external code can modify safely)
+    public void evalAll() {
         topTen.clear();
-        for (int i = 0; i < Math.min(10, population.size()); i++) {
-            topTen.add(population.get(i).clone());
+
+        for (GPTree t : trees) {
+            t.evalFitness(data);
+            insertTopTen(t);
         }
     }
 
-    // Print the best tree
+    private void insertTopTen(GPTree t) {
+        if (topTen.size() < 10) {
+            topTen.add(t.copy());
+            sortTopTen();
+            return;
+        }
+
+        if (t.getFitness() < topTen.get(9).getFitness()) {
+            topTen.set(9, t.copy());
+            sortTopTen();
+        }
+    }
+
+    private void sortTopTen() {
+        Collections.sort(topTen, new Comparator<GPTree>() {
+            @Override
+            public int compare(GPTree a, GPTree b) {
+                return Double.compare(a.getFitness(), b.getFitness());
+            }
+        });
+    }
+
     public void printBestTree() {
-        System.out.println("Best Tree: " + (bestTree == null ? "" : bestTree.toString()));
+        if (topTen.size() > 0)
+            System.out.println("Best Tree: " + topTen.get(0));
+        else
+            System.out.println("Best Tree: ");
     }
 
-    // Print best fitness with 2 decimal places
     public void printBestFitness() {
-        System.out.printf("Best Fitness: %.2f%n", bestFitness);
+        if (topTen.size() > 0)
+            System.out.printf("Best Fitness: %.2f%n", topTen.get(0).getFitness());
+        else
+            System.out.println("Best Fitness: 0.00");
     }
 
-    // Return top ten GPTrees
-    public ArrayList<GPTree> getTopTen() {
-        return topTen;
-    }
-
-    // Print top ten fitness values in autograder format
+    // FIXED FORMAT REQUIRED BY AUTOGRADER
     public void printTopTen() {
-        System.out.print("Top Ten Fitness Values:\n");
+        System.out.print("Top Ten Fitness Values: ");
+
         for (int i = 0; i < 10; i++) {
-            if (i < topTen.size()) System.out.printf("%.2f", topTen.get(i).getFitness());
-            else System.out.printf("%.2f", 0.00);
+            if (i < topTen.size()) {
+                System.out.printf("%.2f", topTen.get(i).getFitness());
+            } else {
+                System.out.printf("%.2f", 0.00);
+            }
+
             if (i < 9) System.out.print(", ");
         }
-        System.out.println();
-    }
 
-    // Example main for quick manual testing (not used by autograder)
-    public static void main(String[] args) {
-        String file = (args != null && args.length > 0) ? args[0] : "simpleTest.csv";
-        Generation gen = new Generation(500, 6, file);
-        gen.evalAll();
-        System.out.println("Enter data file name: " + file);
-        gen.printBestTree();
-        gen.printBestFitness();
-        gen.printTopTen();
+        System.out.println();
     }
 }
