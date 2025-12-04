@@ -1,6 +1,6 @@
 import java.util.*;
 
-// Assume GPTree is your tree representation of expressions
+// Generation of GPTrees for a dataset
 public class Generation {
     private GPTree[] trees;
     private DataSet data;
@@ -11,31 +11,27 @@ public class Generation {
         data = new DataSet(fileName);
         rand = new Random();
 
-        // Set up operators
         Binop[] ops = { new Plus(), new Minus(), new Mult(), new Divide() };
-        factory = new NodeFactory(ops, data.getNumIndepVars()); // <-- make sure DataSet has getNumIndepVars()
+        factory = new NodeFactory(ops, data.getNumIndepVars()); // <-- make sure DataSet has this
 
         trees = new GPTree[size];
 
-        // Initialize trees randomly and evaluate fitness
+        // Initialize trees randomly
         for (int i = 0; i < size; i++) {
-            trees[i] = new GPTree(factory, maxDepth, rand); // GPTree constructor needs Random
-            trees[i].evaluate(data); // <-- compute fitness here
+            trees[i] = new GPTree(factory, maxDepth, rand); // fitness calculated internally
         }
     }
 
-    // Return the tree with the lowest fitness
     public GPTree getBestTree() {
         GPTree best = trees[0];
         for (GPTree tree : trees) {
-            if (tree.getFitness() < best.getFitness()) { // lower fitness = better
+            if (tree.getFitness() < best.getFitness()) {
                 best = tree;
             }
         }
         return best;
     }
 
-    // Return top 10 fitness values sorted ascending
     public double[] getTopTenFitness() {
         double[] fitnessValues = new double[trees.length];
         for (int i = 0; i < trees.length; i++) {
