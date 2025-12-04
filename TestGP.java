@@ -1,18 +1,35 @@
-public class TestGP {
+import java.util.Scanner;
 
+public class TestGP {
     public static void main(String[] args) {
-        if (args.length < 1) {
+        Scanner sc = new Scanner(System.in);
+        System.out.print("Enter data file name: ");
+        String fileName = sc.nextLine();
+
+        // Check if file exists
+        java.io.File f = new java.io.File(fileName);
+        if (!f.exists()) {
             System.out.println("You must provide a data file.");
-            return;
+            System.exit(1);
         }
 
-        String fileName = args[0];
+        // Create initial generation
         Generation gen = new Generation(500, 6, fileName);
 
-        // Run multiple generations (mock output for test purposes)
+        // Evaluate initial generation
+        gen.evalAll();
+
+        // Run 50 generations
         for (int i = 1; i <= 50; i++) {
-            gen.evalAll(); // evaluate trees
-            System.out.printf("Generation %d: Best Fitness = %.2f%n", i, gen.getBestFitness());
+            System.out.println("Generation " + i + ":");
+            System.out.println("Best Tree: " + gen.getBestTree());
+            System.out.printf("Best Fitness: %.2f%n", gen.getBestFitness());
+
+            // Evolve to next generation
+            gen.evolve();
+
+            // Evaluate new generation
+            gen.evalAll();
         }
     }
 }
