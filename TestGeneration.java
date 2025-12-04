@@ -1,39 +1,23 @@
-import java.util.Scanner;
-import java.util.ArrayList;
+import java.util.*;
 
 public class TestGeneration {
     public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
+        Scanner in = new Scanner(System.in);
         System.out.print("Enter data file name: ");
-        String fileName = sc.nextLine();
+        String file = in.nextLine();
 
-        // Check if file exists
-        java.io.File f = new java.io.File(fileName);
-        if (!f.exists()) {
-            System.out.println("You must provide a data file.");
-            System.exit(1);
-        }
-
-        // Create generation
-        Generation gen = new Generation(500, 6, fileName);
-
-        // Evaluate all trees
+        Generation gen = new Generation(500, 6, file);
         gen.evalAll();
 
-        // Print best tree
-        System.out.println("Best Tree: " + gen.getBestTree());
+        gen.printBestTree();
+        gen.printBestFitness();
 
-        // Print best fitness
-        System.out.printf("Best Fitness: %.2f%n", gen.getBestFitness());
-
-        // Print top 10 fitness values
-        System.out.println("Top Ten Fitness Values:");
         ArrayList<GPTree> top10 = gen.getTopTen();
+        System.out.print("Top Ten Fitness Values:\n");
+
         for (int i = 0; i < top10.size(); i++) {
             System.out.printf("%.2f", top10.get(i).getFitness());
-            if (i < top10.size() - 1) {
-                System.out.print(", ");
-            }
+            if (i < top10.size() - 1) System.out.print(", ");
         }
         System.out.println();
     }
