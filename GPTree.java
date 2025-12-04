@@ -1,16 +1,39 @@
 import java.util.Random;
 
-public class GPTree implements Comparable<GPTree>, Cloneable {
-    Node root;
+// Skeleton GPTree class
+public class GPTree {
+    private Node root;  // assume Node represents expression tree nodes
     private double fitness;
-    public GPTree(NodeFactory nf,int maxDepth,Random rand){root=nf.getOperator(rand); root.addRandomKids(nf,maxDepth,rand);}
-    public double eval(double[] x){return root.eval(x);}
-    public void evalFitness(DataSet data){double sum=0; for(int i=0;i<data.size();i++){DataRow row=data.getRow(i); double diff=eval(row.getXValues())-row.getY(); sum+=diff*diff;} fitness=sum;}
-    public double getFitness(){return fitness;}
-    public void traverse(){root.traverse(node->{ });}
-    public GPTree clone(){GPTree copy=null; try{copy=(GPTree) super.clone();}catch(CloneNotSupportedException e){} copy.root=(Node) root.clone(); copy.fitness=fitness; return copy;}
-    public void crossover(GPTree other, Random rand){Node temp=this.root; this.root=other.root; other.root=temp;}
-    @Override public int compareTo(GPTree o){return Double.compare(fitness,o.fitness);}
-    @Override public String toString(){return root.toString();}
-    public String getCrossNodes(){return "";}
+
+    // Constructor
+    public GPTree(NodeFactory factory, int maxDepth, Random rand) {
+        this.root = factory.createRandomTree(maxDepth, rand);
+        this.fitness = Double.MAX_VALUE; // initialize high
+    }
+
+    // Evaluate tree for a single input
+    public double evaluate(double[] inputs) {
+        return root.evaluate(inputs); // root must implement evaluate(double[])
+    }
+
+    // Compute fitness over dataset (sum of squared errors)
+    public void evaluateFitness(DataSet data) {
+        double error = 0.0;
+        for (int i = 0; i < data.size(); i++) {
+            double predicted = this.evaluate(data.getInput(i));
+            double actual = data.getOutput(i);
+            error += Math.pow(predicted - actual, 2);
+        }
+        this.fitness = error;
+    }
+
+    public double getFitness() {
+        return fitness;
+    }
+
+    // Optional: nice string representation of tree
+    @Override
+    public String toString() {
+        return root.toString();
+    }
 }
