@@ -4,5 +4,5 @@ public class Variable extends Unop {
     @Override
     public double eval(double[] values) { return values[index]; }
     @Override
-    public String toString() { return "X" + index; } // Uppercase X
+    public String toString() { return "X" + index; }
 }
