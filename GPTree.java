@@ -1,153 +1,94 @@
-import java.util.ArrayList;
 import java.util.Random;
 
-/**
- * GPTree - genetic programming tree used for symbolic regression.
- *
- * This implementation matches the Node, NodeFactory, and Collector
- * classes in your project:
- *  - constructor: GPTree(NodeFactory n, int maxDepth, Random rand)
- *  - crossover(GPTree other, Random rand)
- *  - eval(double[] data)
- *  - evalFitness(DataSet data)
- *  - getFitness()
- *  - clone(), compareTo(), equals()
- *
- * It assumes:
- *  - Node has methods: eval(double[]), addRandomKids(NodeFactory,int,Random),
- *    clone(), traverse(Collector), swapLeft(Node), swapRight(Node), isLeaf(), toString()
- *  - NodeFactory has methods: getOperator(Random), getTerminal(Random),
- *    getNumOps(), getNumIndepVars()
- *  - DataSet has methods: size(), getRow(int)
- *  - DataRow has methods: getY(), getXValues()
- */
-
-public class GPTree implements Comparable<GPTree>, Collector, Cloneable {
-    private Node root;
-    private ArrayList<Node> crossNodes;
+public class GPTree implements Comparable<GPTree>, Cloneable {
+    Node root;
     private double fitness;
 
-    // Default empty constructor
-    public GPTree() {
-        root = null;
-        crossNodes = null;
-        fitness = Double.POSITIVE_INFINITY;
+    // Constructor used by Generation
+    public GPTree(NodeFactory nf, int maxDepth, Random rand) {
+        root = nf.getOperator(rand);            // Start with an operator
+        root.addRandomKids(nf, maxDepth - 1, rand); // Fill tree
     }
 
-    // Constructor matching other code/tests: build a random tree
-    public GPTree(NodeFactory n, int maxDepth, Random rand) {
-        root = n.getOperator(rand);
-        root.addRandomKids(n, maxDepth, rand);
-        crossNodes = null;
-        fitness = Double.POSITIVE_INFINITY;
+    // Evaluate tree for a single input row
+    public double eval(double[] values) {
+        return root.eval(values);
     }
 
-    // Return string representation of tree
-    @Override
-    public String toString() {
-        return root == null ? "" : root.toString();
-    }
-
-    // Evaluate this tree on one row (double[] of independent variables)
-    public double eval(double[] data) {
-        return root.eval(data);
-    }
-
-    // ---------------- Collector implementation ----------------
-    // collect non-leaf nodes for crossover
-    @Override
-    public void collect(Node node) {
-        if (!node.isLeaf()) {
-            if (crossNodes == null) crossNodes = new ArrayList<>();
-            crossNodes.add(node);
-        }
-    }
-
-    // traverse tree and populate crossNodes
-    public void traverse() {
-        crossNodes = new ArrayList<>();
-        if (root != null) root.traverse(this);
-    }
-
-    // String list of cross nodes separated by semicolons (used by tests)
-    public String getCrossNodes() {
-        if (crossNodes == null || crossNodes.isEmpty()) return "";
-        StringBuilder sb = new StringBuilder();
-        int last = crossNodes.size() - 1;
-        for (int i = 0; i < last; ++i) {
-            sb.append(crossNodes.get(i).toString()).append(";");
-        }
-        sb.append(crossNodes.get(last).toString());
-        return sb.toString();
-    }
-
-    // ---------------- Crossover ----------------
-    // Swap a left or right child with another tree's chosen non-leaf node
-    public void crossover(GPTree tree, Random rand) {
-        if (this.root == null || tree == null || tree.root == null) return;
-
-        this.traverse();
-        tree.traverse();
-
-        // If either has no cross nodes, nothing to do
-        if (this.crossNodes == null || this.crossNodes.isEmpty()) return;
-        if (tree.crossNodes == null || tree.crossNodes.isEmpty()) return;
-
-        int thisPoint = rand.nextInt(this.crossNodes.size());
-        int treePoint = rand.nextInt(tree.crossNodes.size());
-        boolean left = rand.nextBoolean();
-
-        Node thisTrunk = this.crossNodes.get(thisPoint);
-        Node treeTrunk = tree.crossNodes.get(treePoint);
-
-        if (left) thisTrunk.swapLeft(treeTrunk);
-        else thisTrunk.swapRight(treeTrunk);
-    }
-
-    // ---------------- Fitness computation ----------------
-    // Compute sum of squared errors over all rows in DataSet
+    // Compute fitness (sum of squared errors)
     public void evalFitness(DataSet data) {
-        double sumSq = 0.0;
-        int rows = data.size();
-        for (int i = 0; i < rows; ++i) {
-            DataRow r = data.getRow(i);
-            double y = r.getY();
-            double[] x = r.getXValues();
-            double pred = eval(x);
-            double diff = pred - y;
-            sumSq += diff * diff;
+        double sum = 0;
+        for (int i = 0; i < data.size(); i++) {
+            DataRow row = data.getRow(i);
+            double pred = eval(row.getXValues());
+            double err = pred - row.getY();
+            sum += err * err;
         }
-        this.fitness = sumSq;
+        fitness = sum;
     }
 
     public double getFitness() {
-        return this.fitness;
+        return fitness;
     }
 
-    // ---------------- Comparable and equals ----------------
-    @Override
-    public int compareTo(GPTree t) {
-        return Double.compare(this.fitness, t.fitness);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || !(o instanceof GPTree)) return false;
-        return this.compareTo((GPTree) o) == 0;
-    }
-
-    // ---------------- Clone ----------------
     @Override
     public GPTree clone() {
+        GPTree copy = null;
         try {
-            GPTree c = (GPTree) super.clone();
-            if (this.root != null) c.root = (Node) this.root.clone();
-            if (this.crossNodes != null) c.crossNodes = new ArrayList<>(this.crossNodes);
-            c.fitness = this.fitness;
-            return c;
+            copy = (GPTree) super.clone();
         } catch (CloneNotSupportedException e) {
-            // Shouldn't happen because we implement Cloneable
-            return null;
+            e.printStackTrace();
         }
+        copy.root = (Node) this.root.clone();
+        copy.fitness = this.fitness;
+        return copy;
+    }
+
+    // Swap random subtrees between two trees
+    public void crossover(GPTree other, Random rand) {
+        Node myNode = getRandomNode(this.root, rand);
+        Node otherNode = getRandomNode(other.root, rand);
+
+        Node temp = (Node) myNode.clone();
+        myNode.left = otherNode.left;
+        myNode.right = otherNode.right;
+        otherNode.left = temp.left;
+        otherNode.right = temp.right;
+    }
+
+    // Pick a random node in the tree
+    private Node getRandomNode(Node node, Random rand) {
+        if (node == null) return null;
+        if (node.isLeaf() || rand.nextBoolean()) return node;
+        if (rand.nextBoolean()) return getRandomNode(node.left, rand);
+        return getRandomNode(node.right, rand);
+    }
+
+    // Traverse tree with Collector
+    public void traverse() {
+        root.traverse(n -> {}); // empty collector
+    }
+
+    // Return semicolon-separated string of all binop nodes
+    public String getCrossNodes() {
+        StringBuilder sb = new StringBuilder();
+        root.traverse(n -> {
+            if (n.op instanceof Binop) {
+                if (sb.length() > 0) sb.append(";");
+                sb.append(n.toString());
+            }
+        });
+        return sb.toString();
+    }
+
+    // Compare by fitness (lower is better)
+    @Override
+    public int compareTo(GPTree o) {
+        return Double.compare(this.fitness, o.fitness);
+    }
+
+    @Override
+    public String toString() {
+        return root.toString();
     }
 }
