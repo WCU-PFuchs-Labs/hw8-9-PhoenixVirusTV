@@ -8,36 +8,39 @@ public class Generation {
 
     public Generation(int size, int maxDepth, String fileName) {
         data = new DataSet(fileName);
-        Binop[] ops = { new Plus(), new Minus(), new Mult(), new Divide() };
-        factory = new NodeFactory(ops, data.getNumIndep());
-        trees = new GPTree[size];
-        rand = new Random();
 
-        // Initialize trees randomly and evaluate fitness
+        Binop[] ops = { new Plus(), new Minus(), new Mult(), new Divide() };
+        factory = new NodeFactory(ops, data.getNumIndep()); // Must exist in DataSet
+
+        rand = new Random();
+        trees = new GPTree[size];
+
+        // Build all trees and compute fitness
         for (int i = 0; i < size; i++) {
             trees[i] = new GPTree(factory, maxDepth, rand);
-            trees[i].evaluateFitness(data);
+            trees[i].evaluateFitness(data);   // <-- IMPORTANT: correct method call
         }
     }
 
-    // Return the best tree
+    // Return best tree (lowest fitness)
     public GPTree getBestTree() {
         GPTree best = trees[0];
-        for (GPTree tree : trees) {
-            if (tree.getFitness() < best.getFitness()) {
-                best = tree;
+        for (GPTree t : trees) {
+            if (t.getFitness() < best.getFitness()) {
+                best = t;
             }
         }
         return best;
     }
 
-    // Return top 10 fitness values, sorted ascending
+    // Return array of top ten fitness values (sorted)
     public double[] getTopTenFitness() {
-        double[] fitnessValues = new double[trees.length];
+        double[] fitness = new double[trees.length];
         for (int i = 0; i < trees.length; i++) {
-            fitnessValues[i] = trees[i].getFitness();
+            fitness[i] = trees[i].getFitness();
         }
-        Arrays.sort(fitnessValues);
-        return Arrays.copyOf(fitnessValues, Math.min(10, fitnessValues.length));
+
+        Arrays.sort(fitness);
+        return Arrays.copyOf(fitness, Math.min(10, fitness.length));
     }
 }
