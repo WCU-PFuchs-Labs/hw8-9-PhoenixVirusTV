@@ -1,87 +1,60 @@
-import java.util.ArrayList;
-import java.util.Random;
+import java.util.*;
 
-/**
- * Generation - manages a population of GPTrees for symbolic regression.
- */
 public class Generation {
     private GPTree[] trees;
-    private DataSet data;
     private NodeFactory factory;
+    private DataSet data;
     private Random rand;
     private GPTree bestTree;
     private ArrayList<GPTree> topTen;
 
-    /**
-     * Constructs a generation with given size and max tree depth.
-     */
     public Generation(int size, int maxDepth, String fileName) {
-        data = new DataSet(fileName);
         rand = new Random();
+        data = new DataSet(fileName);
 
-        // Initialize operators
+        // Operators
         Binop[] ops = { new Plus(), new Minus(), new Mult(), new Divide() };
         factory = new NodeFactory(ops, data.getNumIndepVars());
 
+        // Initialize trees
         trees = new GPTree[size];
         for (int i = 0; i < size; i++) {
             trees[i] = new GPTree(factory, maxDepth, rand);
         }
 
+        bestTree = null;
         topTen = new ArrayList<>();
     }
 
-    /**
-     * Evaluate all trees in the generation on the dataset.
-     */
+    // Evaluate all trees and compute fitness
     public void evalAll() {
-        for (GPTree t : trees) {
-            t.evalFitness(data);
+        for (GPTree tree : trees) {
+            tree.evalFitness(data);
         }
 
         // Sort trees by fitness
-        java.util.Arrays.sort(trees);
+        Arrays.sort(trees);
 
-        // Best tree
+        // Best tree is first
         bestTree = trees[0];
 
         // Update top ten
         topTen.clear();
-        for (int i = 0; i < Math.min(10, trees.length); i++) {
-            topTen.add(trees[i].clone());
+        int n = Math.min(10, trees.length);
+        for (int i = 0; i < n; i++) {
+            topTen.add(trees[i].clone()); // clone to avoid mutation
         }
     }
 
-    /**
-     * Prints the best tree.
-     */
-    public void printBestTree() {
-        System.out.println("Best Tree: " + bestTree);
+    public GPTree getBestTree() {
+        return bestTree;
     }
 
-    /**
-     * Prints the best fitness value.
-     */
-    public void printBestFitness() {
-        System.out.printf("Best Fitness: %.2f%n", bestTree.getFitness());
+    public double getBestFitness() {
+        return bestTree.getFitness();
     }
 
-    /**
-     * Returns the top ten trees.
-     */
     public ArrayList<GPTree> getTopTen() {
         return topTen;
-    }
-
-    /**
-     * Print the top ten fitness values.
-     */
-    public void printTopTen() {
-        System.out.print("Top Ten Fitness Values:\n");
-        for (int i = 0; i < topTen.size(); i++) {
-            System.out.printf("%.2f", topTen.get(i).getFitness());
-            if (i != topTen.size() - 1) System.out.print(", ");
-        }
-        System.out.println();
     }
 }
