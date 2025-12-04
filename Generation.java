@@ -1,4 +1,5 @@
 import java.util.*;
+import java.io.*;
 
 public class Generation {
     private GPTree[] trees;
@@ -6,54 +7,102 @@ public class Generation {
     private NodeFactory factory;
     private Random rand;
 
+    /**
+     * Constructor: creates a generation of GPTrees
+     * @param size number of trees in the generation
+     * @param maxDepth maximum depth of each tree
+     * @param fileName CSV data file
+     */
     public Generation(int size, int maxDepth, String fileName) {
-        data = new DataSet(fileName);
+        try {
+            data = new DataSet(fileName);
+        } catch (Exception e) {
+            System.out.println("Error loading data file: " + e.getMessage());
+            return;
+        }
+
         Binop[] ops = { new Plus(), new Minus(), new Mult(), new Divide() };
-        factory = new NodeFactory(ops, data.getNumIndep());
+        factory = new NodeFactory(ops, data.getNumIndepVars()); // Fixed method name
         rand = new Random();
+
         trees = new GPTree[size];
         for (int i = 0; i < size; i++) {
-            trees[i] = new GPTree(factory, maxDepth, rand); // must match GPTree constructor
+            trees[i] = new GPTree(factory, maxDepth, rand); // constructor with Random
         }
     }
 
-    // Evaluate fitness for all trees and sort them
+    /**
+     * Evaluate fitness for all trees in the generation and sort them
+     */
     public void evalAll() {
         for (GPTree t : trees) {
             t.evalFitness(data);
         }
-        Arrays.sort(trees); // GPTree must implement Comparable<GPTree>
+        Arrays.sort(trees); // requires GPTree implements Comparable
     }
 
-    // Return best tree (lowest fitness)
-    public GPTree getBestTree() {
-        return trees[0];
-    }
-
-    // Return best fitness
-    public double getBestFitness() {
-        return trees[0].getFitness();
-    }
-
-    // Return top 10 trees as ArrayList
+    /**
+     * Return top 10 GPTrees in increasing fitness order
+     */
     public ArrayList<GPTree> getTopTen() {
-        ArrayList<GPTree> top10 = new ArrayList<>();
-        for (int i = 0; i < Math.min(10, trees.length); i++) {
-            top10.add(trees[i]);
+        ArrayList<GPTree> topTen = new ArrayList<>();
+        int n = Math.min(10, trees.length);
+        for (int i = 0; i < n; i++) {
+            topTen.add((GPTree) trees[i].clone());
         }
-        return top10;
+        return topTen;
     }
 
-    // Evolve the generation (for TestGP)
+    /**
+     * Print the best fitness in the generation
+     */
+    public void printBestFitness() {
+        if (trees.length > 0)
+            System.out.printf("Best Fitness: %.2f%n", trees[0].getFitness());
+    }
+
+    /**
+     * Print the best GPTree
+     */
+    public void printBestTree() {
+        if (trees.length > 0)
+            System.out.println("Best Tree: " + trees[0]);
+    }
+
+    /**
+     * Evolve the generation (Checkpoint 2)
+     * Creates a new generation using crossover of randomly selected parents
+     */
     public void evolve() {
-        GPTree[] newGen = new GPTree[trees.length];
-        for (int i = 0; i < trees.length; i += 2) {
-            GPTree parent1 = trees[rand.nextInt(trees.length)].clone();
-            GPTree parent2 = trees[rand.nextInt(trees.length)].clone();
+        GPTree[] newTrees = new GPTree[trees.length];
+
+        for (int i = 0; i < trees.length / 2; i++) {
+            // Select two parents from top 50% for better fitness
+            GPTree parent1 = trees[rand.nextInt(trees.length / 2)].clone();
+            GPTree parent2 = trees[rand.nextInt(trees.length / 2)].clone();
+
+            // Perform crossover
             parent1.crossover(parent2);
-            newGen[i] = parent1;
-            if (i + 1 < trees.length) newGen[i + 1] = parent2;
+
+            // Add children to new generation
+            newTrees[2 * i] = parent1;
+            newTrees[2 * i + 1] = parent2;
         }
-        trees = newGen;
+
+        trees = newTrees;
+    }
+
+    /**
+     * Get the best GPTree (first in sorted array)
+     */
+    public GPTree getBestTree() {
+        return trees.length > 0 ? trees[0] : null;
+    }
+
+    /**
+     * Get the fitness of the best tree
+     */
+    public double getBestFitness() {
+        return trees.length > 0 ? trees[0].getFitness() : Double.MAX_VALUE;
     }
 }
