@@ -17,7 +17,7 @@ public class Generation {
 
         for (int i = 0; i < size; i++) {
             trees[i] = new GPTree(factory, maxDepth, rand);
-            trees[i].evaluate(data);
+            trees[i].evaluateFitness(data); // <-- use your actual method
         }
     }
 
@@ -37,7 +37,6 @@ public class Generation {
             fitnessValues[i] = trees[i].getFitness();
         }
         Arrays.sort(fitnessValues);
-        // Return top 10 or fewer if less than 10 trees
         return Arrays.copyOf(fitnessValues, Math.min(10, fitnessValues.length));
     }
 }
