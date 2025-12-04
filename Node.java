@@ -19,20 +19,14 @@ public class Node implements Cloneable {
         return 0;
     }
 
-    /**
-     * Add children recursively, safely filling in nulls and controlling depth.
-     */
+    /** Fixed addRandomKids to guarantee both children exist */
     public void addRandomKids(NodeFactory nf, int maxDepth, Random rand) {
-        if(maxDepth <= 0) return;
-
         if(op instanceof Binop) {
-            if(left == null)
-                left = (rand.nextBoolean() && maxDepth > 1) ? nf.getOperator(rand) : nf.getTerminal(rand);
-            left.addRandomKids(nf, maxDepth - 1, rand);
+            if(left == null) left = (maxDepth > 1) ? nf.getOperator(rand) : nf.getTerminal(rand);
+            if(left.op instanceof Binop) left.addRandomKids(nf, maxDepth - 1, rand);
 
-            if(right == null)
-                right = (rand.nextBoolean() && maxDepth > 1) ? nf.getOperator(rand) : nf.getTerminal(rand);
-            right.addRandomKids(nf, maxDepth - 1, rand);
+            if(right == null) right = (maxDepth > 1) ? nf.getOperator(rand) : nf.getTerminal(rand);
+            if(right.op instanceof Binop) right.addRandomKids(nf, maxDepth - 1, rand);
         }
     }
 
@@ -54,29 +48,11 @@ public class Node implements Cloneable {
         return "";
     }
 
-    // Traversal for Collector
     public void traverse(Collector c) {
         c.collect(this);
         if(left != null) left.traverse(c);
         if(right != null) right.traverse(c);
     }
 
-    // Swap left child with another node's left child
-    public void swapLeft(Node trunk) {
-        Node temp = this.left;
-        this.left = trunk.left;
-        trunk.left = temp;
-    }
-
-    // Swap right child with another node's right child
-    public void swapRight(Node trunk) {
-        Node temp = this.right;
-        this.right = trunk.right;
-        trunk.right = temp;
-    }
-
-    // Leaf check: Unop is leaf
-    public boolean isLeaf() {
-        return op instanceof Unop;
-    }
+    public boolean isLeaf() { return op instanceof Unop; }
 }
