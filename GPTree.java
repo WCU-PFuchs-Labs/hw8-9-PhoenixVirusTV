@@ -1,121 +1,185 @@
-import java.util.ArrayList;
+/**
+ * Class Name: GPTree
+ * Description:
+ *     Represents a genetic programming tree used for symbolic regression.
+ *     A GPTree consists of a single root Node, which may be an operator node
+ *     (with children) or a terminal node. The GPTree supports evaluation,
+ *     deep copying, mutation, crossover, and pretty-printing.
+ *
+ * Author: Michael Williams
+ * Date: Fall 2025
+ */
+
 import java.util.Random;
 
-public class GPTree implements Comparable<GPTree>, Collector, Cloneable {
+public class GPTree {
+
+    /** Root node of the GP tree */
     private Node root;
-    private ArrayList<Node> crossNodes;
-    private double fitness;
 
-    // --- Constructors ---
+    /** Random object used for mutation & crossover */
+    private static final Random rand = new Random();
+
+    /** Default constructor (creates an empty tree) */
     public GPTree() {
-        root = null;
+        this.root = null;
     }
 
-    // Matches how your tests construct trees: NodeFactory, maxDepth, Random
-    public GPTree(NodeFactory n, int maxDepth, Random rand) {
-        root = n.getOperator(rand);
-        root.addRandomKids(n, maxDepth, rand);
+    /** Constructor with an already-built root node */
+    public GPTree(Node root) {
+        this.root = root;
     }
 
-    // --- Collector implementation: collect non-leaf nodes for crossover ---
-    @Override
-    public void collect(Node node) {
-        if (!node.isLeaf()) {
-            if (crossNodes == null) crossNodes = new ArrayList<>();
-            crossNodes.add(node);
-        }
+    /** Returns the root node */
+    public Node getRoot() {
+        return root;
     }
 
-    // Prepare list of cross nodes by traversing the tree
-    public void traverse() {
-        crossNodes = new ArrayList<>();
-        root.traverse(this);
+    /** Replace the root node */
+    public void setRoot(Node n) {
+        this.root = n;
     }
 
-    /** Return semicolon-separated string of cross nodes (useful for testing) */
-    public String getCrossNodes() {
-        if (crossNodes == null || crossNodes.isEmpty()) return "";
-        StringBuilder sb = new StringBuilder();
-        int lastIndex = crossNodes.size() - 1;
-        for (int i = 0; i < lastIndex; ++i) {
-            sb.append(crossNodes.get(i).toString()).append(";");
-        }
-        sb.append(crossNodes.get(lastIndex).toString());
-        return sb.toString();
+    /**
+     * Evaluates the GPTree for a specific row of a dataset.
+     * @param data   DataSet containing variables
+     * @param row    Which row to evaluate
+     * @return       Numerical output of the tree
+     */
+    public double eval(DataSet data, int row) {
+        return root.eval(data, row);
     }
 
-    // --- Crossover: swaps a left or right child with another tree's chosen node ---
-    public void crossover(GPTree tree, Random rand) {
-        // ensure both trees have crossNodes populated
-        this.traverse();
-        tree.traverse();
-
-        // safety: if either has no cross nodes, do nothing
-        if (this.crossNodes.isEmpty() || tree.crossNodes.isEmpty()) return;
-
-        int thisPoint = rand.nextInt(this.crossNodes.size());
-        int treePoint = rand.nextInt(tree.crossNodes.size());
-        boolean left = rand.nextBoolean();
-
-        Node thisTrunk = this.crossNodes.get(thisPoint);
-        Node treeTrunk = tree.crossNodes.get(treePoint);
-
-        if (left) thisTrunk.swapLeft(treeTrunk);
-        else thisTrunk.swapRight(treeTrunk);
+    /**
+     * Returns a deep copy of this GPTree (root and entire subtree).
+     */
+    public GPTree copy() {
+        return new GPTree(root.copy());
     }
 
-    // --- Evaluate single data row ---
-    public double eval(double[] data) {
-        return root.eval(data);
-    }
-
+    /**
+     * Produces a pretty infix representation of the tree.
+     * Example: "((x + 3) * (y - 2))"
+     */
     @Override
     public String toString() {
-        return root.toString();
+        return root.printInfix();
     }
 
-    // --- Fitness over a DataSet (sum of squared errors) ---
-    public void evalFitness(DataSet data) {
-        double sumSq = 0.0;
-        int rows = data.size(); // assumes DataSet.size() exists
-        for (int i = 0; i < rows; ++i) {
-            DataRow r = data.getRow(i);     // assumes DataSet.getRow(i)
-            double y = r.getY();            // assumes DataRow.getY()
-            double[] x = r.getXValues();    // assumes DataRow.getXValues()
-            double pred = eval(x);
-            double diff = pred - y;
-            sumSq += diff * diff;
+    // =====================================================================
+    //                         MUTATION OPERATION
+    // =====================================================================
+
+    /**
+     * Mutates the GPTree by selecting one random node and replacing it
+     * with a completely new random subtree grown by the NodeFactory.
+     *
+     * @param factory – a NodeFactory that can grow new subtrees
+     * @param maxDepth – maximum depth of the replacement subtree
+     */
+    public void mutate(NodeFactory factory, int maxDepth) {
+        // If the tree only has a root, just replace it
+        if (root.getNodeCount() == 1) {
+            root = factory.growTree(maxDepth);
+            return;
         }
-        this.fitness = sumSq;
+
+        // Pick a random index in the tree
+        int targetIndex = rand.nextInt(root.getNodeCount());
+
+        // Mutate the node at that position
+        root = mutateHelper(root, factory, maxDepth, new int[]{targetIndex});
     }
 
-    public double getFitness() { return fitness; }
-
-    // --- Comparable / equals ---
-    @Override
-    public int compareTo(GPTree t) {
-        return Double.compare(this.fitness, t.fitness);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || !(o instanceof GPTree)) return false;
-        return this.compareTo((GPTree) o) == 0;
-    }
-
-    // --- Deep clone ---
-    @Override
-    public GPTree clone() {
-        try {
-            GPTree c = (GPTree) super.clone();
-            if (this.root != null) c.root = (Node) this.root.clone();
-            if (this.crossNodes != null) c.crossNodes = new ArrayList<>(this.crossNodes); // shallow copy of references is OK
-            c.fitness = this.fitness;
-            return c;
-        } catch (CloneNotSupportedException e) {
-            // Shouldn't happen because we implement Cloneable, but handle gracefully
-            System.out.println("GPTree clone failed: " + e);
-            return null;
+    private Node mutateHelper(Node current, NodeFactory factory, int maxDepth, int[] counter) {
+        if (counter[0] == 0) {
+            // Replace this node entirely
+            return factory.growTree(maxDepth);
         }
+
+        counter[0]--; // move deeper in the traversal
+
+        // Recurse into children
+        if (current instanceof OpNode) {
+            OpNode op = (OpNode) current;
+            op.setLeft(mutateHelper(op.getLeft(), factory, maxDepth, counter));
+            op.setRight(mutateHelper(op.getRight(), factory, maxDepth, counter));
+        }
+
+        return current;
+    }
+
+    // =====================================================================
+    //                         CROSSOVER OPERATION
+    // =====================================================================
+
+    /**
+     * Performs subtree crossover between two GPTrees.
+     * Randomly selects one node from this tree and one from the donor tree,
+     * and swaps them.
+     *
+     * @param donor – GPTree providing the subtree
+     * @return new GPTree containing the crossed-over result
+     */
+    public GPTree crossover(GPTree donor) {
+        GPTree offspring = this.copy();          // preserve original
+        Node donorRootCopy = donor.root.copy();  // deep copy of donor
+
+        int indexA = rand.nextInt(offspring.root.getNodeCount());
+        int indexB = rand.nextInt(donorRootCopy.getNodeCount());
+
+        offspring.root = crossoverHelper(
+                offspring.root,
+                donorRootCopy,
+                new int[]{indexA},
+                new int[]{indexB}
+        );
+
+        return offspring;
+    }
+
+    private Node crossoverHelper(Node hostNode, Node donorNode, int[] a, int[] b) {
+
+        // When host index hits 0, replace with donor subtree
+        if (a[0] == 0) {
+            return getNodeByIndex(donorNode, b[0]).copy();
+        }
+
+        a[0]--;
+
+        if (hostNode instanceof OpNode op) {
+            op.setLeft(crossoverHelper(op.getLeft(), donorNode, a, b));
+            op.setRight(crossoverHelper(op.getRight(), donorNode, a, b));
+        }
+
+        return hostNode;
+    }
+
+    /**
+     * Retrieves the node at a specific index (preorder).
+     */
+    public Node getNodeByIndex(int index) {
+        return getNodeByIndex(root, index);
+    }
+
+    private Node getNodeByIndex(Node current, int index) {
+        if (index == 0)
+            return current;
+
+        index--;
+
+        if (current instanceof OpNode op) {
+
+            int leftCount = op.getLeft().getNodeCount();
+
+            if (index < leftCount)
+                return getNodeByIndex(op.getLeft(), index);
+
+            index -= leftCount;
+
+            return getNodeByIndex(op.getRight(), index);
+        }
+
+        throw new IllegalArgumentException("Index exceeds node count");
     }
 }
