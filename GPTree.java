@@ -1,65 +1,101 @@
-import java.util.ArrayList;
 import java.util.Random;
+import tabular.DataSet;
+import tabular.DataRow;
 
+/**
+ * GPTree class for Genetic Programming
+ * Implements Comparable and Cloneable
+ */
 public class GPTree implements Comparable<GPTree>, Cloneable {
-    private Node root;
-    private ArrayList<Node> crossNodes;
-    private double fitness;
+    private Node root;      // root node of the tree
+    private double fitness; // fitness value after evaluation
+    private static Random rand = new Random();
 
-    // Constructor: random tree
-    public GPTree(NodeFactory factory, int maxDepth, Random rand) {
-        root = factory.getOperator(rand);
-        root.addRandomKids(factory, maxDepth, rand);
-        crossNodes = null;
-        fitness = Double.POSITIVE_INFINITY;
+    // Constructor with root node
+    public GPTree(Node root) {
+        this.root = root;
+        this.fitness = Double.MAX_VALUE; // initialize as worst fitness
     }
 
-    // Evaluate one row
-    public double eval(double[] data) {
-        return root.eval(data);
+    /**
+     * Evaluate tree for a single input row
+     */
+    public double eval(double[] x) {
+        return root.eval(x);
     }
 
-    // Evaluate fitness over dataset
+    /**
+     * Evaluate fitness across entire DataSet
+     * Fitness = sum of squared deviations from y
+     */
     public void evalFitness(DataSet dataSet) {
-        double sumSq = 0.0;
-        for (int i = 0; i < dataSet.size(); i++) {
-            DataRow r = dataSet.getRow(i);
-            double pred = eval(r.getXValues());
-            double diff = pred - r.getY();
-            sumSq += diff * diff;
+        double sum = 0.0;
+        for (DataRow row : dataSet.getRows()) {
+            double[] x = row.getX();
+            double y = row.getY();
+            double diff = eval(x) - y;
+            sum += diff * diff;
         }
-        fitness = sumSq;
+        this.fitness = sum;
     }
 
-    public double getFitness() { return fitness; }
+    /**
+     * Returns fitness after evalFitness has been called
+     */
+    public double getFitness() {
+        return fitness;
+    }
 
-    // Comparable
+    /**
+     * Compare two GPTrees based on fitness
+     */
     @Override
     public int compareTo(GPTree t) {
         return Double.compare(this.fitness, t.fitness);
     }
 
+    /**
+     * Equals based on fitness
+     */
     @Override
     public boolean equals(Object o) {
         if (o == null || !(o instanceof GPTree)) return false;
-        return this.compareTo((GPTree)o) == 0;
+        GPTree other = (GPTree) o;
+        return Double.compare(this.fitness, other.fitness) == 0;
     }
 
-    // Clone / copy
+    /**
+     * Deep clone of GPTree
+     */
     @Override
     public GPTree clone() {
         try {
-            GPTree c = (GPTree) super.clone();
-            if (this.root != null) c.root = (Node) this.root.clone();
-            c.fitness = this.fitness;
-            return c;
+            GPTree copy = (GPTree) super.clone();
+            copy.root = this.root.clone(); // assumes Node is Cloneable
+            return copy;
         } catch (CloneNotSupportedException e) {
-            return null;
+            throw new RuntimeException(e);
         }
     }
 
-    public GPTree copy() { return this.clone(); }
+    /**
+     * Genetic crossover with another GPTree
+     * Swap random subtrees
+     */
+    public void crossover(GPTree other) {
+        Node mySubtree = this.root.getRandomNode();
+        Node otherSubtree = other.root.getRandomNode();
 
+        Node temp = mySubtree.clone();
+        mySubtree.replaceWith(otherSubtree.clone());
+        otherSubtree.replaceWith(temp);
+    }
+
+    /**
+     * Return string representation of tree
+     */
     @Override
-    public String toString() { return root.toString(); }
+    public String toString() {
+        return root.toString();
+    }
 }
