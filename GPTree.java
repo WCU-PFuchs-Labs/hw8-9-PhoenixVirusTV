@@ -31,7 +31,6 @@ public class GPTree {
         return fitness;
     }
 
-    // Optional: nice string representation of tree
     @Override
     public String toString() {
         return root.toString();
