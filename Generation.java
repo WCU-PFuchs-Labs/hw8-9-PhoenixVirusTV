@@ -1,40 +1,48 @@
 import java.util.*;
 
+// Assume GPTree is your tree representation of expressions
 public class Generation {
-    public GPTree[] trees; // make public so test can access if needed
+    private GPTree[] trees;
     private DataSet data;
     private NodeFactory factory;
     private Random rand;
 
     public Generation(int size, int maxDepth, String fileName) {
         data = new DataSet(fileName);
-
         Binop[] ops = { new Plus(), new Minus(), new Mult(), new Divide() };
-        factory = new NodeFactory(ops, data.getNumIndepVars());
+        factory = new NodeFactory(ops, data.getNumIndep());
+        trees = new GPTree[size];
         rand = new Random();
 
-        trees = new GPTree[size];
+        // Initialize trees randomly
         for (int i = 0; i < size; i++) {
             trees[i] = new GPTree(factory, maxDepth);
-            trees[i].computeFitness(data);
         }
 
-        // Sort trees by fitness ascending (best first)
-        Arrays.sort(trees, Comparator.comparingDouble(GPTree::getFitness));
+        // Evaluate fitness for all trees
+        for (GPTree tree : trees) {
+            tree.evaluateFitness(data);
+        }
     }
 
-    // Helper method for tests
+    // --- Add these two methods so tests can access the best tree and top 10 fitness ---
     public GPTree getBestTree() {
-        return trees[0]; // after sorting, best is first
+        GPTree best = trees[0];
+        for (GPTree tree : trees) {
+            if (tree.getFitness() < best.getFitness()) { // assuming lower fitness is better
+                best = tree;
+            }
+        }
+        return best;
     }
 
-    // Helper method for tests
     public double[] getTopTenFitness() {
-        int n = Math.min(10, trees.length);
-        double[] topTen = new double[n];
-        for (int i = 0; i < n; i++) {
-            topTen[i] = trees[i].getFitness();
+        double[] fitnessValues = new double[trees.length];
+        for (int i = 0; i < trees.length; i++) {
+            fitnessValues[i] = trees[i].getFitness();
         }
-        return topTen;
+        Arrays.sort(fitnessValues);
+        // Return top 10, or less if fewer trees
+        return Arrays.copyOf(fitnessValues, Math.min(10, fitnessValues.length));
     }
 }
